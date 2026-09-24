@@ -1,4 +1,4 @@
-import React,{useEffect,useMemo,useState}from'react';import{createRoot}from'react-dom/client';import{configured,supabase}from'./supabase';import'./style.css';
+import React,{useEffect,useState}from'react';import{createRoot}from'react-dom/client';import{configured,supabase}from'./supabase';import'./style.css';
 
 const sections=[
 ['Visão Geral','dashboard'],['Negócios','businesses'],['Clientes / CRM','contacts'],['Financeiro','financial_entries'],['Investimentos','investments'],['Vendas','sales'],['Produtos e Serviços','products_services'],['Mensalidades','subscriptions'],['Cobranças','collections'],['Campanhas','campaigns'],['Grupos de Envio','contact_groups'],['Remetentes','sender_profiles'],['Modelos de Mensagem','message_templates'],['Tarefas','tasks'],['Agenda','appointments'],['Projetos','projects'],['Metas','goals'],['Ideias','idea_board'],['Estoque','inventory'],['Fornecedores','suppliers'],['Dívidas','debts'],['Finanças Pessoais','personal_finance_entries'],['Notas','notes'],['Links','saved_links'],['Relatórios','reports'],['Configurações','settings']];
