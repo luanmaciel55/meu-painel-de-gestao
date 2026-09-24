@@ -42,7 +42,7 @@ function Generic({table}) {
     const {data,error}=await supabase.from(table).select('*').order('created_at',{ascending:false}).limit(100);
     if(!error)setData(data||[]);
   }
-  useEffect(()=>{load()},[table]);
+  useEffect(()=>{setForm({});setOpen(false);setMsg('');load()},[table]);
   useEffect(()=>{(async()=>{
     const [b,c,p]=await Promise.all([
       supabase.from('businesses').select('id,name').order('name'),
@@ -55,6 +55,7 @@ function Generic({table}) {
   async function save(e){
     e.preventDefault();
     const payload={...form};
+    if(table==='businesses') delete payload.business_id;
     if(['products_services','investments','inventory','sales','subscriptions'].includes(table) && !payload.business_id){setMsg('Selecione o Negócio / Empresa.');return;}
     if(table==='subscriptions' && !payload.contact_id){setMsg('Selecione o Cliente.');return;}
     for(const f of fs){
