@@ -30,6 +30,9 @@ function Login(){const[email,setEmail]=useState(''),[password,setPassword]=useSt
 
 function Generic({table}) {
   const [data,setData]=useState([]);
+  const [businesses,setBusinesses]=useState([]);
+  const [contacts,setContacts]=useState([]);
+  const [products,setProducts]=useState([]);
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState({});
   const [msg,setMsg]=useState('');
@@ -40,10 +43,20 @@ function Generic({table}) {
     if(!error)setData(data||[]);
   }
   useEffect(()=>{load()},[table]);
+  useEffect(()=>{(async()=>{
+    const [b,c,p]=await Promise.all([
+      supabase.from('businesses').select('id,name').order('name'),
+      supabase.from('contacts').select('id,name').order('name'),
+      supabase.from('products_services').select('id,name,business_id').order('name')
+    ]);
+    setBusinesses(b.data||[]); setContacts(c.data||[]); setProducts(p.data||[]);
+  })()},[table]);
 
   async function save(e){
     e.preventDefault();
     const payload={...form};
+    if(['products_services','investments','inventory','sales','subscriptions'].includes(table) && !payload.business_id){setMsg('Selecione o Negócio / Empresa.');return;}
+    if(table==='subscriptions' && !payload.contact_id){setMsg('Selecione o Cliente.');return;}
     for(const f of fs){
       if(f[2]==='number' && payload[f[0]]!=='') payload[f[0]]=Number(payload[f[0]]);
     }
@@ -64,6 +77,9 @@ function Generic({table}) {
     </div>
     {open && <div className="modalbg"><form className="modal" onSubmit={save}>
       <h3>Novo — {labels[table]}</h3>
+      {table!=='businesses' && <div className="field"><label>Negócio / Empresa{['products_services','investments','inventory','sales','subscriptions'].includes(table)?' *':''}</label><select required={['products_services','investments','inventory','sales','subscriptions'].includes(table)} value={form.business_id||''} onChange={e=>setForm({...form,business_id:e.target.value})}><option value="">Selecione</option>{businesses.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div>}
+      {['sales','subscriptions'].includes(table) && <div className="field"><label>Cliente{table==='subscriptions'?' *':''}</label><select required={table==='subscriptions'} value={form.contact_id||''} onChange={e=>setForm({...form,contact_id:e.target.value})}><option value="">Selecione</option>{contacts.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>}
+      {['inventory','subscriptions'].includes(table) && <div className="field"><label>Produto / Serviço</label><select value={form.product_service_id||''} onChange={e=>setForm({...form,product_service_id:e.target.value})}><option value="">Selecione</option>{products.filter(p=>!form.business_id||p.business_id===form.business_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>}
       {fs.map(f=><div className="field" key={f[0]}>
         <label>{f[1]}</label>
         {(f[0]==='body'||f[0]==='description'||f[0]==='notes')
