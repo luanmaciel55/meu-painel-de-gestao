@@ -35,6 +35,7 @@ function Generic({table}) {
   const [products,setProducts]=useState([]);
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState({});
+  const [editingId,setEditingId]=useState(null);
   const [msg,setMsg]=useState('');
   const fs=fields[table]||[];
 
@@ -42,7 +43,7 @@ function Generic({table}) {
     const {data,error}=await supabase.from(table).select('*').order('created_at',{ascending:false}).limit(100);
     if(!error)setData(data||[]);
   }
-  useEffect(()=>{setForm({});setOpen(false);setMsg('');load()},[table]);
+  useEffect(()=>{setForm({});setEditingId(null);setOpen(false);setMsg('');load()},[table]);
   useEffect(()=>{(async()=>{
     const [b,c,p]=await Promise.all([
       supabase.from('businesses').select('id,name').order('name'),
@@ -61,23 +62,25 @@ function Generic({table}) {
     for(const f of fs){
       if(f[2]==='number' && payload[f[0]]!=='') payload[f[0]]=Number(payload[f[0]]);
     }
-    const {error}=await supabase.from(table).insert(payload);
+    const {error}=editingId
+      ? await supabase.from(table).update(payload).eq('id',editingId)
+      : await supabase.from(table).insert(payload);
     if(error){setMsg(error.message);return;}
-    setOpen(false); setForm({}); setMsg(''); load();
+    setOpen(false); setForm({}); setEditingId(null); setMsg(''); load();
   }
 
   return <>
     <div className="sectiontitle">
       <div><h2>{labels[table]||table}</h2><p className="muted">Cadastre, acompanhe e organize tudo em um só lugar.</p></div>
-      {fs.length>0 && <button className="btn" onClick={()=>setOpen(true)}>+ Novo</button>}
+      {fs.length>0 && <button className="btn" onClick={()=>{setEditingId(null);setForm({});setMsg('');setOpen(true)}}>+ Novo</button>}
     </div>
     <div className="panel">
-      {data.length ? <table className="table"><thead><tr>{fs.slice(0,5).map(f=><th key={f[0]}>{f[1]}</th>)}</tr></thead>
-      <tbody>{data.map((r,i)=><tr key={r.id||i}>{fs.slice(0,5).map(f=><td key={f[0]}>{String(r[f[0]]??'—')}</td>)}</tr>)}</tbody></table>
+      {data.length ? <table className="table"><thead><tr>{fs.slice(0,5).map(f=><th key={f[0]}>{f[1]}</th>)}{table==='products_services'&&<th>Ações</th>}</tr></thead>
+      <tbody>{data.map((r,i)=><tr key={r.id||i}>{fs.slice(0,5).map(f=><td key={f[0]}>{String(r[f[0]]??'—')}</td>)}{table==='products_services'&&<td><button className="btn alt" onClick={()=>{setEditingId(r.id);setForm({...r});setMsg('');setOpen(true)}}>Editar</button></td>}</tr>)}</tbody></table>
       : <div className="empty">Nenhum registro ainda.</div>}
     </div>
     {open && <div className="modalbg"><form className="modal" onSubmit={save}>
-      <h3>Novo — {labels[table]}</h3>
+      <h3>{editingId?'Editar':'Novo'} — {labels[table]}</h3>
       {table!=='businesses' && <div className="field"><label>Negócio / Empresa{['products_services','investments','inventory','sales','subscriptions'].includes(table)?' *':''}</label><select required={['products_services','investments','inventory','sales','subscriptions'].includes(table)} value={form.business_id||''} onChange={e=>setForm({...form,business_id:e.target.value})}><option value="">Selecione</option>{businesses.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div>}
       {['sales','subscriptions'].includes(table) && <div className="field"><label>Cliente{table==='subscriptions'?' *':''}</label><select required={table==='subscriptions'} value={form.contact_id||''} onChange={e=>setForm({...form,contact_id:e.target.value})}><option value="">Selecione</option>{contacts.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>}
       {['inventory','subscriptions'].includes(table) && <div className="field"><label>Produto / Serviço</label><select value={form.product_service_id||''} onChange={e=>setForm({...form,product_service_id:e.target.value})}><option value="">Selecione</option>{products.filter(p=>!form.business_id||p.business_id===form.business_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>}
@@ -88,7 +91,7 @@ function Generic({table}) {
           : <input type={f[2]||'text'} step={f[2]==='number'?'0.01':undefined} value={form[f[0]]||''} onChange={e=>setForm({...form,[f[0]]:e.target.value})}/>}
       </div>)}
       {msg && <div className="notice danger">{msg}</div>}
-      <div className="toolbar"><button className="btn">Salvar</button><button type="button" className="btn alt" onClick={()=>setOpen(false)}>Cancelar</button></div>
+      <div className="toolbar"><button className="btn">Salvar</button><button type="button" className="btn alt" onClick={()=>{setOpen(false);setEditingId(null);setForm({});setMsg('')}}>Cancelar</button></div>
     </form></div>}
   </>;
 }
