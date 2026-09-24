@@ -28,7 +28,53 @@ subscriptions:[['amount','Valor','number'],['billing_day','Dia cobrança','numbe
 
 function Login(){const[email,setEmail]=useState(''),[password,setPassword]=useState(''),[msg,setMsg]=useState('');async function go(e){e.preventDefault();setMsg('Entrando...');const{error}=await supabase.auth.signInWithPassword({email,password});setMsg(error?error.message:'');}return <div className="login"><form className="panel" onSubmit={go}><h1>Meu Painel de Gestão</h1><p className="muted">Acesso privado à sua central de negócios.</p><div className="field"><label>E-mail</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></div><div className="field"><label>Senha</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} required/></div><button className="btn">Entrar</button>{msg&&<p className="muted">{msg}</p>}</form></div>}
 
-function Generic({table}){const[data,setData]=useState([]),[open,setOpen]=useState(false),[form,setForm]=useState({}),[msg,setMsg]=useState('');const fs=fields[table]||[];async function load(){const{data,error}=await supabase.from(table).select('*').order('created_at',{ascending:false}).limit(100);if(!error)setData(data||[])}useEffect(()=>{load()},[table]);async function save(e){e.preventDefault();let payload={...form};for(const f of fs)if(f[2]==='number'&&payload[f[0]]!=='')payload[f[0]]=Number(payload[f[0]]);const{error}=await supabase.from(table).insert(payload);if(error){setMsg(error.message);return}setOpen(false);setForm({});load()}return <><div className="sectiontitle"><div><h2>{labels[table]||table}</h2><p className="muted">Cadastre, acompanhe e organize tudo em um só lugar.</p></div>{fs.length>0&&<button className="btn" onClick={()=>setOpen(true)}>+ Novo</button>}</div><div className="panel">{data.length?<table className="table"><thead><tr>{fs.slice(0,5).map(f=><th key={f[0]}>{f[1]}</th>)}</tr></thead><tbody>{data.map((r,i)=><tr key={r.id||i}>{fs.slice(0,5).map(f=><td key={f[0]}>{String(r[f[0]]??'—')}</td>)}</tr>)}</tbody></table>:<div className="empty">Nenhum registro ainda.</div>}</div>{open&&<div className="modalbg"><form className="modal" onSubmit={save}><h3>Novo — {labels[table]}</h3>{fs.map(f=><div className="field" key={f[0]}><label>{f[1]}</label>{f[0]==='body'||f[0]==='description'||f[0]==='notes'?<textarea rows="4" value={form[f[0]]||''} onChange={e=>setForm({...form,[f[0]]:e.target.value})}/>:<input type={f[2]||'text'} step={f[2]==='number'?'0.01':undefined} value={form[f[0]]||''} onChange={e=>setForm({...form,[f[0]]:e.target.value)}/>}</div>)}{msg&&<div className="notice danger">{msg}</div>}<div className="toolbar"><button className="btn">Salvar</button><button type="button" className="btn alt" onClick={()=>setOpen(false)}>Cancelar</button></div></form></div>}</>}
+function Generic({table}) {
+  const [data,setData]=useState([]);
+  const [open,setOpen]=useState(false);
+  const [form,setForm]=useState({});
+  const [msg,setMsg]=useState('');
+  const fs=fields[table]||[];
+
+  async function load(){
+    const {data,error}=await supabase.from(table).select('*').order('created_at',{ascending:false}).limit(100);
+    if(!error)setData(data||[]);
+  }
+  useEffect(()=>{load()},[table]);
+
+  async function save(e){
+    e.preventDefault();
+    const payload={...form};
+    for(const f of fs){
+      if(f[2]==='number' && payload[f[0]]!=='') payload[f[0]]=Number(payload[f[0]]);
+    }
+    const {error}=await supabase.from(table).insert(payload);
+    if(error){setMsg(error.message);return;}
+    setOpen(false); setForm({}); setMsg(''); load();
+  }
+
+  return <>
+    <div className="sectiontitle">
+      <div><h2>{labels[table]||table}</h2><p className="muted">Cadastre, acompanhe e organize tudo em um só lugar.</p></div>
+      {fs.length>0 && <button className="btn" onClick={()=>setOpen(true)}>+ Novo</button>}
+    </div>
+    <div className="panel">
+      {data.length ? <table className="table"><thead><tr>{fs.slice(0,5).map(f=><th key={f[0]}>{f[1]}</th>)}</tr></thead>
+      <tbody>{data.map((r,i)=><tr key={r.id||i}>{fs.slice(0,5).map(f=><td key={f[0]}>{String(r[f[0]]??'—')}</td>)}</tr>)}</tbody></table>
+      : <div className="empty">Nenhum registro ainda.</div>}
+    </div>
+    {open && <div className="modalbg"><form className="modal" onSubmit={save}>
+      <h3>Novo — {labels[table]}</h3>
+      {fs.map(f=><div className="field" key={f[0]}>
+        <label>{f[1]}</label>
+        {(f[0]==='body'||f[0]==='description'||f[0]==='notes')
+          ? <textarea rows="4" value={form[f[0]]||''} onChange={e=>setForm({...form,[f[0]]:e.target.value})}/>
+          : <input type={f[2]||'text'} step={f[2]==='number'?'0.01':undefined} value={form[f[0]]||''} onChange={e=>setForm({...form,[f[0]]:e.target.value})}/>}
+      </div>)}
+      {msg && <div className="notice danger">{msg}</div>}
+      <div className="toolbar"><button className="btn">Salvar</button><button type="button" className="btn alt" onClick={()=>setOpen(false)}>Cancelar</button></div>
+    </form></div>}
+  </>;
+}
 
 function Dashboard(){const[s,setS]=useState({revenue:0,expenses:0,investments:0,result:0}),[counts,setCounts]=useState({}),[verse,setVerse]=useState(null);useEffect(()=>{(async()=>{const{data}=await supabase.from('global_financial_summary').select('*').single();if(data)setS(data);const pairs=await Promise.all(['businesses','contacts','tasks','campaigns'].map(async t=>[t,(await supabase.from(t).select('*',{count:'exact',head:true})).count||0]));setCounts(Object.fromEntries(pairs));const{data:v}=await supabase.from('bible_encouragements').select('*').eq('active',true).limit(1).maybeSingle();setVerse(v)})()},[]);const money=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});return <><h2>Visão Geral</h2><p className="muted">Sua central para acompanhar todos os negócios.</p><div className="cards"><div className="card">Receitas<b>{money(s.revenue)}</b></div><div className="card">Despesas<b>{money(s.expenses)}</b></div><div className="card">Investimentos<b>{money(s.investments)}</b></div><div className="card">Resultado<b>{money(s.result)}</b></div></div><div className="grid2"><div className="panel"><h3>Resumo operacional</h3><p>Negócios: <b>{counts.businesses||0}</b></p><p>Clientes: <b>{counts.contacts||0}</b></p><p>Tarefas: <b>{counts.tasks||0}</b></p><p>Campanhas: <b>{counts.campaigns||0}</b></p></div><div className="panel verse"><h3>Propósito e constância</h3>{verse?<><b>{verse.reference}</b><p>{verse.passage}</p><small className="muted">{verse.context}</small></>:<p className="muted">Ao alcançar uma meta, o sistema poderá apresentar uma mensagem e um texto bíblico com contexto.</p>}</div></div></>}
 
